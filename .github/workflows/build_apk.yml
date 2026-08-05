@@ -22,19 +22,17 @@ jobs:
       - name: Generate Android Code
         run: flutter create . --platforms=android --org=com.ui.music
 
-      - name: Create App Icon Asset
-        run: |
-          mkdir -p assets
-          # Downloading a dummy icon image for the app logo
-          wget -O assets/icon.png https://images.unsplash.com/photo-1614680376593-902f74a61326?q=80&w=200&auto=format&fit=crop
-
-      - name: Configure Clean SDK & Permissions
+      - name: Configure Clean SDK, Permissions & App Icon
         run: |
           python -c "
+          import os, urllib.request
+
+          # 1. Update Gradle SDK Versions
           with open('android/app/build.gradle', 'r') as f: d = f.read()
           d = d.replace('flutter.minSdkVersion', '21').replace('flutter.compileSdkVersion', '34').replace('flutter.targetSdkVersion', '34')
           with open('android/app/build.gradle', 'w') as f: f.write(d)
           
+          # 2. Update Manifest (Permissions + AudioService)
           manifest_path = 'android/app/src/main/AndroidManifest.xml'
           with open(manifest_path, 'r') as f: m = f.read()
           
@@ -56,12 +54,18 @@ jobs:
               </receiver>'''
           m = m.replace('</activity>', services)
           with open(manifest_path, 'w') as f: f.write(m)
+
+          # 3. Download & Place App Icon directly to res folders
+          icon_url = 'https://images.unsplash.com/photo-1614680376593-902f74a61326?q=80&w=200&auto=format&fit=crop'
+          res_dir = 'android/app/src/main/res'
+          for density in ['mipmap-hdpi', 'mipmap-mdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi']:
+              folder = os.path.join(res_dir, density)
+              os.makedirs(folder, exist_ok=True)
+              urllib.request.urlretrieve(icon_url, os.path.join(folder, 'ic_launcher.png'))
           "
 
-      - name: Get Dependencies & Generate Icons
-        run: |
-          flutter pub get
-          flutter pub run flutter_launcher_icons
+      - name: Get Dependencies
+        run: flutter pub get
 
       - name: Build Debug APK
         run: flutter build apk --debug --no-tree-shake-icons
