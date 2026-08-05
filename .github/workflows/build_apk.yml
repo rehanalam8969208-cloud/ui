@@ -1,0 +1,55 @@
+name: Build Android APK
+on:
+  push:
+    branches: [ "main" ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+
+      - name: Generate Android Code
+        run: flutter create . --platforms=android --org=com.ui.music
+
+      - name: Configure SDK & Permissions
+        run: |
+          python -c "
+          with open('android/app/build.gradle', 'r') as f: d = f.read()
+          d = d.replace('flutter.minSdkVersion', '21').replace('flutter.compileSdkVersion', '34').replace('flutter.targetSdkVersion', '34')
+          with open('android/app/build.gradle', 'w') as f: f.write(d)
+          
+          manifest_path = 'android/app/src/main/AndroidManifest.xml'
+          with open(manifest_path, 'r') as f: m = f.read()
+          perms = '''<uses-permission android:name=\"android.permission.WAKE_LOCK\"/>
+          <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\"/>
+          <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK\"/>
+          <uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>
+          <uses-permission android:name=\"android.permission.READ_MEDIA_AUDIO\"/>
+          <application'''
+          m = m.replace('<application', perms)
+          m = m.replace('android:name=\".MainActivity\"', 'android:name=\"com.ryanheise.audioservice.AudioServiceActivity\"')
+          with open(manifest_path, 'w') as f: f.write(m)
+          "
+
+      - name: Get Dependencies
+        run: flutter pub get
+
+      - name: Build Debug APK
+        run: flutter build apk --debug --no-tree-shake-icons
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Rehan-Apple-Style-Music-APK
+          path: 'build/app/outputs/**/*.apk'
