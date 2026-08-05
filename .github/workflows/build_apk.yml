@@ -52,16 +52,6 @@ jobs:
           with open(manifest_path, 'w') as f: f.write(m)
           "
 
-      - name: Setup Custom App Icon
-        run: |
-          mkdir -p android/app/src/main/res/mipmap-hdpi android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi android/app/src/main/res/mipmap-xxxhdpi
-          wget -O icon.png "https://raw.githubusercontent.com/github/explore/80688e429a7d4fac9e843ad3335cb7fac9faa111/topics/music/music.png"
-          cp icon.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-          cp icon.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-          cp icon.png android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-          cp icon.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-          cp icon.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-
       - name: Get Dependencies
         run: flutter pub get
 
