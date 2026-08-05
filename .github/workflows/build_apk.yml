@@ -22,67 +22,39 @@ jobs:
       - name: Generate Android Code
         run: flutter create . --platforms=android --org=com.ui.music
 
-      - name: Fix SDK Versions safely
+      - name: Smart Manifest Injector (Crash-Proof)
         run: |
-          sed -i 's/flutter.minSdkVersion/21/g' android/app/build.gradle
-          sed -i 's/flutter.compileSdkVersion/34/g' android/app/build.gradle
-          sed -i 's/flutter.targetSdkVersion/34/g' android/app/build.gradle
-
-      - name: Inject Perfect AndroidManifest.xml (Crash-Proof)
-        run: |
-          cat << 'EOF' > android/app/src/main/AndroidManifest.xml
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.WAKE_LOCK"/>
-              <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-              <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
-              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-              <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
-              <application
-                  android:label="Rehan Music"
-                  android:name="${applicationName}"
-                  android:icon="@mipmap/ic_launcher">
-                  <activity
-                      android:name="com.ryanheise.audioservice.AudioServiceActivity"
-                      android:exported="true"
-                      android:launchMode="singleTop"
-                      android:theme="@style/LaunchTheme"
-                      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-                      android:hardwareAccelerated="true"
-                      android:windowSoftInputMode="adjustResize">
-                      <meta-data
-                        android:name="io.flutter.embedding.android.NormalTheme"
-                        android:resource="@style/NormalTheme"
-                        />
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
-                      </intent-filter>
-                  </activity>
-                  <service android:name="com.ryanheise.audioservice.AudioService"
-                      android:foregroundServiceType="mediaPlayback"
-                      android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.media.browse.MediaBrowserService" />
-                      </intent-filter>
+          python -c "
+          # 1. SDK Version Update
+          with open('android/app/build.gradle', 'r') as f: d = f.read()
+          d = d.replace('flutter.minSdkVersion', '21').replace('flutter.compileSdkVersion', '34').replace('flutter.targetSdkVersion', '34')
+          with open('android/app/build.gradle', 'w') as f: f.write(d)
+          
+          # 2. Safely Inject Background Permissions & Services
+          with open('android/app/src/main/AndroidManifest.xml', 'r') as f: m = f.read()
+          
+          permissions = '''<uses-permission android:name=\"android.permission.WAKE_LOCK\"/>
+          <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\"/>
+          <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK\"/>
+          <uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>
+          <uses-permission android:name=\"android.permission.READ_MEDIA_AUDIO\"/>
+          <application'''
+          
+          services = '''
+                  <service android:name=\"com.ryanheise.audioservice.AudioService\" android:foregroundServiceType=\"mediaPlayback\" android:exported=\"true\">
+                      <intent-filter> <action android:name=\"android.media.browse.MediaBrowserService\" /> </intent-filter>
                   </service>
-                  <receiver android:name="com.ryanheise.audioservice.MediaButtonReceiver"
-                      android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MEDIA_BUTTON" />
-                      </intent-filter>
+                  <receiver android:name=\"com.ryanheise.audioservice.MediaButtonReceiver\" android:exported=\"true\">
+                      <intent-filter> <action android:name=\"android.intent.action.MEDIA_BUTTON\" /> </intent-filter>
                   </receiver>
-                  <meta-data
-                      android:name="flutterEmbedding"
-                      value="2" />
-              </application>
-              <queries>
-                  <intent>
-                      <action android:name="android.intent.action.PROCESS_TEXT"/>
-                      <data android:mimeType="text/plain"/>
-                  </intent>
-              </queries>
-          </manifest>
-          EOF
+              </application>'''
+              
+          m = m.replace('<application', permissions)
+          m = m.replace('.MainActivity', 'com.ryanheise.audioservice.AudioServiceActivity')
+          m = m.replace('</application>', services)
+          
+          with open('android/app/src/main/AndroidManifest.xml', 'w') as f: f.write(m)
+          "
 
       - name: Get Dependencies
         run: flutter pub get
@@ -95,4 +67,3 @@ jobs:
         with:
           name: Rehan-Apple-Style-Music-APK
           path: 'build/app/outputs/**/*.apk'
-          
