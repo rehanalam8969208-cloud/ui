@@ -22,15 +22,19 @@ jobs:
       - name: Generate Android Code
         run: flutter create . --platforms=android --org=com.ui.music
 
-      - name: Inject Safe Background & Storage Permissions
+      - name: Create App Icon Asset
+        run: |
+          mkdir -p assets
+          # Downloading a dummy icon image for the app logo
+          wget -O assets/icon.png https://images.unsplash.com/photo-1614680376593-902f74a61326?q=80&w=200&auto=format&fit=crop
+
+      - name: Configure Clean SDK & Permissions
         run: |
           python -c "
-          # 1. Update Gradle SDK Versions
           with open('android/app/build.gradle', 'r') as f: d = f.read()
           d = d.replace('flutter.minSdkVersion', '21').replace('flutter.compileSdkVersion', '34').replace('flutter.targetSdkVersion', '34')
           with open('android/app/build.gradle', 'w') as f: f.write(d)
           
-          # 2. Update Manifest (Permissions + AudioService)
           manifest_path = 'android/app/src/main/AndroidManifest.xml'
           with open(manifest_path, 'r') as f: m = f.read()
           
@@ -41,7 +45,6 @@ jobs:
           <uses-permission android:name=\"android.permission.READ_MEDIA_AUDIO\"/>
           <application'''
           m = m.replace('<application', perms)
-          
           m = m.replace('android:name=\".MainActivity\"', 'android:name=\"com.ryanheise.audioservice.AudioServiceActivity\"')
           
           services = '''</activity>
@@ -52,12 +55,13 @@ jobs:
                   <intent-filter> <action android:name=\"android.intent.action.MEDIA_BUTTON\" /> </intent-filter>
               </receiver>'''
           m = m.replace('</activity>', services)
-          
           with open(manifest_path, 'w') as f: f.write(m)
           "
 
-      - name: Get Dependencies
-        run: flutter pub get
+      - name: Get Dependencies & Generate Icons
+        run: |
+          flutter pub get
+          flutter pub run flutter_launcher_icons
 
       - name: Build Debug APK
         run: flutter build apk --debug --no-tree-shake-icons
