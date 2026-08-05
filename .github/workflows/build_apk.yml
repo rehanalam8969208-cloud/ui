@@ -31,24 +31,8 @@ jobs:
           
           manifest_path = 'android/app/src/main/AndroidManifest.xml'
           with open(manifest_path, 'r') as f: m = f.read()
-          
-          perms = '''<uses-permission android:name=\"android.permission.WAKE_LOCK\"/>
-          <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\"/>
-          <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK\"/>
-          <uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>
-          <uses-permission android:name=\"android.permission.READ_MEDIA_AUDIO\"/>
-          <application'''
+          perms = '''<uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>\n    <uses-permission android:name=\"android.permission.READ_MEDIA_AUDIO\"/>\n    <application'''
           m = m.replace('<application', perms)
-          m = m.replace('android:name=\".MainActivity\"', 'android:name=\"com.ryanheise.audioservice.AudioServiceActivity\"')
-          
-          services = '''</activity>
-              <service android:name=\"com.ryanheise.audioservice.AudioService\" android:foregroundServiceType=\"mediaPlayback\" android:exported=\"true\">
-                  <intent-filter> <action android:name=\"android.media.browse.MediaBrowserService\" /> </intent-filter>
-              </service>
-              <receiver android:name=\"com.ryanheise.audioservice.MediaButtonReceiver\" android:exported=\"true\">
-                  <intent-filter> <action android:name=\"android.intent.action.MEDIA_BUTTON\" /> </intent-filter>
-              </receiver>'''
-          m = m.replace('</activity>', services)
           with open(manifest_path, 'w') as f: f.write(m)
           "
 
