@@ -22,16 +22,38 @@ jobs:
       - name: Generate Android Code
         run: flutter create . --platforms=android --org=com.ui.music
 
-      - name: Configure Clean SDK & Permissions
+      - name: Inject Safe Background & Storage Permissions
         run: |
           python -c "
+          # 1. Update Gradle SDK Versions
           with open('android/app/build.gradle', 'r') as f: d = f.read()
           d = d.replace('flutter.minSdkVersion', '21').replace('flutter.compileSdkVersion', '34').replace('flutter.targetSdkVersion', '34')
           with open('android/app/build.gradle', 'w') as f: f.write(d)
-          with open('android/app/src/main/AndroidManifest.xml', 'r') as f: m = f.read()
-          p = '<uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>\n    <uses-permission android:name=\"android.permission.READ_MEDIA_AUDIO\"/>\n    <application'
-          m = m.replace('<application', p)
-          with open('android/app/src/main/AndroidManifest.xml', 'w') as f: f.write(m)
+          
+          # 2. Update Manifest (Permissions + AudioService)
+          manifest_path = 'android/app/src/main/AndroidManifest.xml'
+          with open(manifest_path, 'r') as f: m = f.read()
+          
+          perms = '''<uses-permission android:name=\"android.permission.WAKE_LOCK\"/>
+          <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\"/>
+          <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK\"/>
+          <uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>
+          <uses-permission android:name=\"android.permission.READ_MEDIA_AUDIO\"/>
+          <application'''
+          m = m.replace('<application', perms)
+          
+          m = m.replace('android:name=\".MainActivity\"', 'android:name=\"com.ryanheise.audioservice.AudioServiceActivity\"')
+          
+          services = '''</activity>
+              <service android:name=\"com.ryanheise.audioservice.AudioService\" android:foregroundServiceType=\"mediaPlayback\" android:exported=\"true\">
+                  <intent-filter> <action android:name=\"android.media.browse.MediaBrowserService\" /> </intent-filter>
+              </service>
+              <receiver android:name=\"com.ryanheise.audioservice.MediaButtonReceiver\" android:exported=\"true\">
+                  <intent-filter> <action android:name=\"android.intent.action.MEDIA_BUTTON\" /> </intent-filter>
+              </receiver>'''
+          m = m.replace('</activity>', services)
+          
+          with open(manifest_path, 'w') as f: f.write(m)
           "
 
       - name: Get Dependencies
@@ -43,5 +65,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: UI-MusicPlayer-APK
+          name: Rehan-Premium-Light-APK
           path: 'build/app/outputs/**/*.apk'
