@@ -1,0 +1,47 @@
+name: Build Android APK
+on:
+  push:
+    branches: [ "main" ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+
+      - name: Generate Android Code
+        run: flutter create . --platforms=android --org=com.ui.music
+
+      - name: Configure Clean SDK & Permissions
+        run: |
+          python -c "
+          with open('android/app/build.gradle', 'r') as f: d = f.read()
+          d = d.replace('flutter.minSdkVersion', '21').replace('flutter.compileSdkVersion', '34').replace('flutter.targetSdkVersion', '34')
+          with open('android/app/build.gradle', 'w') as f: f.write(d)
+          with open('android/app/src/main/AndroidManifest.xml', 'r') as f: m = f.read()
+          p = '<uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>\n    <uses-permission android:name=\"android.permission.READ_MEDIA_AUDIO\"/>\n    <application'
+          m = m.replace('<application', p)
+          with open('android/app/src/main/AndroidManifest.xml', 'w') as f: f.write(m)
+          "
+
+      - name: Get Dependencies
+        run: flutter pub get
+
+      - name: Build Debug APK
+        run: flutter build apk --debug --no-tree-shake-icons
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: UI-MusicPlayer-APK
+          path: 'build/app/outputs/**/*.apk'
